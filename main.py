@@ -1,4 +1,4 @@
-me
+import time
 import telebot
 import threading
 import requests
