@@ -1,18 +1,62 @@
+
 import time
 import telebot
 import threading
 import requests
+import json
+import os
 
 TOKEN = "7839759534:AAEigi9npxA-FLq4Hp2SvpzLfZLE2xpSRdw"
 bot = telebot.TeleBot(TOKEN)
+SUBSCRIBERS_FILE = "subscribers.json"
+admin_id = 610937553  # غيّره إذا تبي تقيد أمر البث لك فقط
 
-subscribers = set()
+def load_subscribers():
+    if os.path.exists(SUBSCRIBERS_FILE):
+        with open(SUBSCRIBERS_FILE, "r") as f:
+            return set(json.load(f))
+    return set()
+
+def save_subscribers():
+    with open(SUBSCRIBERS_FILE, "w") as f:
+        json.dump(list(subscribers), f)
+
+subscribers = load_subscribers()
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.chat.id
-    subscribers.add(user_id)
-    bot.reply_to(message, "أهلاً بك في بوت Crypto Plus. يتم إرسال أفضل 25 عملة مرتفعة تلقائيًا كل 6 ساعات.")
+    if user_id not in subscribers:
+        subscribers.add(user_id)
+        save_subscribers()
+
+    markup = telebot.types.InlineKeyboardMarkup()
+    btn = telebot.types.InlineKeyboardButton("عرض العملات الآن", callback_data="show_top25")
+    markup.add(btn)
+
+    bot.send_message(user_id, "أهلاً بك في بوت Crypto Plus.\nتم تسجيلك بنجاح لاستقبال أفضل العملات تلقائيًا كل 6 ساعات.", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "show_top25")
+def send_top25_now(call):
+    message = get_top_25_gainers()
+    bot.send_message(call.message.chat.id, message)
+
+@bot.message_handler(commands=['broadcast'])
+def broadcast_message(message):
+    if message.chat.id != admin_id:
+        return
+    text = message.text.replace("/broadcast", "").strip()
+    if not text:
+        bot.reply_to(message, "اكتب الرسالة بعد الأمر مباشرة.")
+        return
+    count = 0
+    for user_id in subscribers:
+        try:
+            bot.send_message(user_id, text)
+            count += 1
+        except:
+            continue
+    bot.reply_to(message, f"تم إرسال الرسالة إلى {count} مشترك.")
 
 def get_top_25_gainers():
     url = "https://api.binance.com/api/v3/ticker/24hr"
@@ -40,7 +84,7 @@ def auto_send_updates():
                 bot.send_message(user_id, message)
             except:
                 continue
-        time.sleep(6 * 60 * 60)  # كل 6 ساعات
+        time.sleep(6 * 60 * 60)
 
 threading.Thread(target=auto_send_updates).start()
 bot.infinity_polling()
