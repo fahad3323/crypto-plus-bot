@@ -3,7 +3,8 @@ import time
 import telebot
 import threading
 
-TOKEN = "7839759534:AAEigi9npxA-FLq4Hp2SvpzLfZLE2xpSRdw"bot = telebot.TeleBot(TOKEN)
+TOKEN = "7839759534:AAEigi9npxA-FLq4Hp2SvpzLfZLE2xpSRdw"
+bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
